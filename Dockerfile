@@ -1,41 +1,26 @@
-FROM ubuntu:22.04
+FROM node:18-slim
 
-# Install system dependencies
+# Install Python3, pip, and venv
 RUN apt-get update && \
-    apt-get install -y \
-      curl \
-      python3 \
-      python3-pip \
-      python3-venv \
-      git
+    apt-get install -y python3 python3-pip python3-venv && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js (LTS) and npm
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs
-
-# Install pnpm globally
-RUN npm install -g pnpm
-
-# Copy requirements.txt and install Python dependencies
-COPY requirements.txt .
+# Create and activate a virtual environment, then install requirements
+COPY requirements.txt ./
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Set working directory
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Copy package files and install dependencies
+# Install Node.js dependencies
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install
+RUN npm install -g pnpm && pnpm install
 
-# Copy the rest of the app and scripts
+# Copy the rest of the code
 COPY . .
 
-# Expose port
-EXPOSE 3000
+RUN pnpm build
 
-# Start Next.js in dev mode
-CMD ["pnpm", "dev"]
-#CMD ["bash"]
+EXPOSE 3000
+CMD ["pnpm", "start"]
